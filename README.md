@@ -2,7 +2,7 @@
 
 Quick Start:
 ```bash
-git clone https://github.com/brthor/docker-layer2-icc.git && cd docker-layer-2 && ./run.sh
+git clone https://github.com/brthor/docker-layer2-icc.git && cd docker-layer2-icc && ./run.sh
 ```
 
 ## Explanation (What and How)
