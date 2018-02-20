@@ -136,4 +136,10 @@ These contain more explanation to break it down.
 
 ## Bug Resolution (Workarounds)
 
+If you keep containers on the same network bridge, create ebtables rules between containers. For each pair of containers, create a pair of rules, like those below, but replacing the mac addresses with the addresses of your containers.
+```
+sudo ebtables -A FORWARD -d 02:42:ac:13:00:02 -s 02:42:ac:13:00:03 -j DROP
+sudo ebtables -A FORWARD -s 02:42:ac:13:00:02 -d 02:42:ac:13:00:03 -j DROP
+```
+
 It can be worked around by placing containers on different network bridges. That means using `docker network create` for every container. By default you can only create 31 containers. [Set the subnet on each network manually to get around this limitation](https://loomchild.net/2016/09/04/docker-can-create-only-31-networks-on-a-single-machine/).
