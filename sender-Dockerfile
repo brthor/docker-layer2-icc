@@ -1,0 +1,7 @@
+FROM python:3
+
+RUN apt-get update && apt-get install -y nano
+
+COPY ./ethSender.py /ethSender.py
+
+CMD python -u /ethSender.py

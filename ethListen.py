@@ -7,8 +7,22 @@ import time
 
 ETH_P_ALL = 3
 
+def printMacAddr():
+  from uuid import getnode as get_mac
+  mac = get_mac()
+  addrStr = ':'.join(("%012X" % mac)[i:i+2] for i in range(0, 12, 2))
+
+  # addrStr piped to ethSender, important it's printed first
+  print(addrStr)
+  print("^ Mac Address ^")
+
 def printPacket(packet, now, message):
-  print(message, len(packet), "bytes time:", now)
+  packetMessage = packet[14:].decode('ascii', 'ignore')
+
+  if packetMessage == "hello":
+    print ("Got message from sender.")
+
+  print(message, "Len:", len(packet), "bytes time:", now, "message:", packetMessage)
 
 def listeneth(interface = "eth0"):
   s = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))
@@ -33,5 +47,8 @@ def listeneth(interface = "eth0"):
     time.sleep(0.001001)
 
 if __name__ == "__main__":
+  # MacAddr piped to ethSender, important it's printed first
+  printMacAddr()
+
   print("Listening for packets")
   listeneth()

@@ -15,59 +15,118 @@ In both cases you expect that all network communications will be blocked between
 This behavior is highly unexpected, and in highly secure environments, likely to be an issue.
 
 ## Repro Steps
+
 I reproed this using `Docker-CE for Mac Version 17.09.0-ce-rc3-mac30 (19329)`.
 
-These repro steps are a little complicated because I didn't want to parse the output of `ip a` and I don't know a way to get the layer 2 address from outside the containers. 
+### Automatic Repro
 
-1. Get the python image, it is a large one: `docker pull python:latest`
-2. Create the ICC Disabled network: `docker network create -o com.docker.network.bridge.enable_icc=false noicc`
-3. Make sure you have two shells open, one for the listening container, and one for the sender.
-4. Start your listening container: `docker run -it --network noicc --name ethListen --rm python bash`
-5. Get the layer 2 address, inside Listening Container, I'll refer to this as (DEST_ADDR): `ip a`
-Your output will look like this, you are looking for the highlighted value.
+Use [./run.sh](/run.sh) to run an automatic repro. Your output will look like:
 
-![Ip A output](/ip_a.png)
-
-6. Copy the contents of `ethListen.py` (from this repo) into the listening container. I installed and used nano.
-```
-$ apt-get update 
-$ apt-get install -y nano
-$ nano ethListen.py
-```
-
-7. Run `ethListen.py` in the listening container to listen for raw ethernet frames.
-```
-$ python ethListen.py
+```bash
+$ ./run.sh
+Sending build context to Docker daemon  602.1kB
+Step 1/4 : FROM python:3
+ ---> 336d482502ab
+Step 2/4 : RUN apt-get update && apt-get install -y nano
+ ---> Using cache
+ ---> 5cee00913b09
+Step 3/4 : COPY ./ethListen.py /ethListen.py
+ ---> Using cache
+ ---> a2667cd58e69
+Step 4/4 : CMD python -u /ethListen.py
+ ---> Using cache
+ ---> 9743c680cc72
+Successfully built 9743c680cc72
+Successfully tagged eth-listener:latest
+Sending build context to Docker daemon  602.1kB
+Step 1/4 : FROM python:3
+ ---> 336d482502ab
+Step 2/4 : RUN apt-get update && apt-get install -y nano
+ ---> Using cache
+ ---> 5cee00913b09
+Step 3/4 : COPY ./ethSender.py /ethSender.py
+ ---> Using cache
+ ---> e528077d48da
+Step 4/4 : CMD python -u /ethSender.py
+ ---> Using cache
+ ---> 46061f2a53ca
+Successfully built 46061f2a53ca
+Successfully tagged eth-sender:latest
+eth-listener
+eth-sender
+8391d06550a63fb8423be86876cd906a79720f6d52c0d8885ce2e102b8015768
+Sent 35-byte Ethernet packet on eth0
+XX:XX:XX:XX:XX:XX
+^ Mac Address ^
 Listening for packets
+Received: Len: 78 bytes time: 1519123406.9721925 message: `:
+                                                            $[8
+                                                               $
+Received: Len: 90 bytes time: 1519123407.0323486 message: `$B:|{
+Received: Len: 90 bytes time: 1519123407.2033708 message: `$B:|{
+Received: Len: 35 bytes time: 1519123407.2230816 message: HELLO from the SENDER
+^C
+```
+
+If you see the line
+```
+
+Received: Len: 35 bytes time: 1519123407.2230816 message: HELLO from the SENDER
 
 ```
 
-8. Now we need to set up the sending container: `docker run -it --network noicc --name ethSend --rm python bash`
+Then the sender successfully sent a raw ethernet frame, despite icc being enabled.
 
-9. Get the layer 2 address, inside sending container, as we did above for the listening container. I'll refer to this as (SRC_ADDR).
+### Manual Repro Steps
 
-10. Edit the contents of ethSend.py (in this repo). Replacing the DEST_ADDR and SRC_ADDR to the ones from your containers. Example values that were in my containers are already in ethSend.py to show how they should be formatted. For example `02:42:ac:18:00:02` becomes `b"\x02\x42\xAC\x11\x00\x02"`.
+1. Build the Listener image: `docker build -t "eth-listener" -f listener-Dockerfile .`
+The [listener](/ethListen.py) listens for raw ethernet frames and prints any received data.
+It also finds and prints it's layer 2 address. We will need this value to send it data.
 
-11. Copy the contents of `ethSend.py` (from this repo) into the sending container. I installed and used nano.
-```
-$ apt-get update 
-$ apt-get install -y nano
-$ nano ethSend.py
-```
+2. Build the Sender image: `docker build -t "eth-sender" -f sender-Dockerfile .`
+The [sender](/ethSender.py) sends the string "HELLO from the SENDER" to the listener. 
+We will look for this string amongst the listener output.
 
-12. Run `ethSend.py` in the sending container to send one raw packet. Run it as many times as you like to send more packets.
-```
-$ python ethSend.py
-Sent 19-byte Ethernet packet on eth0
-```
+3. Create the ICC Disabled network: `docker network create -o com.docker.network.bridge.enable_icc=false noicc`
+`noicc` is the name of the network.
 
-13. Now examine the output on the listening container (there may be more frames than just this one, but look for the matching byte count):
-```
+4. Make sure you have two shells open, one for the listening container, and one for the sender.
+
+5. Start your listening container: 
+```bash
+$ docker run -it --network noicc --name eth-listener eth-listener
+XX:XX:XX:XX:XX:XX
+^ Mac Address ^
 Listening for packets
-Received: 19 bytes time: 1519095710.6201906
+...
+```
+
+**Copy the mac address value for the next step.**
+
+6. Run the sending container in your second terminal
+```bash
+$ docker run -it --network noicc --name eth-sender eth-sender
+"Enter the Destination Mac Address."
+```
+
+7. Paste the mac address from the listening container in the sending container terminal.
+
+8. Observe the Listening container output for `HELLO from the SENDER`
+```
+$ docker run -it --network noicc --name eth-listener eth-listener
+XX:XX:XX:XX:XX:XX
+^ Mac Address ^
+Listening for packets
+Received: Len: 78 bytes time: 1519123587.8931577 message: `:vgG\vg
+Received: Len: 78 bytes time: 1519123587.9433937 message: `:]qB
+Received: Len: 90 bytes time: 1519123588.222616 message: `$:
+Received: Len: 35 bytes time: 1519123588.2736714 message: HELLO from the SENDER
+Received: Len: 32 bytes time: 1519123588.9437985 message:
 ```
 
 **Disabling ICC on the bridge network didn't block the raw socket communication as we would have expected**
+
+These contain more explanation to break it down.
 
 ## Bug Resolution (Workarounds)
 
