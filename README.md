@@ -71,4 +71,4 @@ Received: 19 bytes time: 1519095710.6201906
 
 ## Bug Resolution (Workarounds)
 
-It can be worked around by placing containers on different network bridges. That means using `docker network create` for every container. By default you can only create 31 containers. [Set the subnet on https://loomchild.net/2016/09/04/docker-can-create-only-31-networks-on-a-single-machine/ network manually to get around this limitation]().
+It can be worked around by placing containers on different network bridges. That means using `docker network create` for every container. By default you can only create 31 containers. [Set the subnet on each network manually to get around this limitation](https://loomchild.net/2016/09/04/docker-can-create-only-31-networks-on-a-single-machine/).
