@@ -1,5 +1,10 @@
 # Docker Layer 2 ICC Bug
 
+Quick Start:
+```bash
+git clone https://github.com/brthor/docker-layer2-icc.git && cd docker-layer-2 && ./run.sh
+```
+
 ## Explanation (What and How)
 
 When you create a docker container using `docker run`, it is automatically connected to a bridge network. Unless inter-container communication (ICC) was disabled in the docker daemon, every container on that bridge network can communicate with one another via sockets.
@@ -17,6 +22,7 @@ This behavior is highly unexpected, and in highly secure environments, likely to
 ## Repro Steps
 
 I reproed this using `Docker-CE for Mac Version 17.09.0-ce-rc3-mac30 (19329)`.
+And `Docker-CE on CentOS 7.3 Version 18.02.0-ce`
 
 ### Automatic Repro
 
