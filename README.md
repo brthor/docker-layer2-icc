@@ -81,7 +81,7 @@ Received: Len: 35 bytes time: 1519123407.2230816 message: HELLO from the SENDER
 
 ```
 
-Then the sender successfully sent a raw ethernet frame, despite icc being enabled.
+Then the sender successfully sent a raw ethernet frame, despite icc being disabled.
 
 ### Manual Repro Steps
 
